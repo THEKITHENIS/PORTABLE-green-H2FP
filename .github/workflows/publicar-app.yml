@@ -1,0 +1,50 @@
+# Compila la app y la publica en GitHub Pages cada vez que hay cambios en main.
+# También la deja instalable como app (carpeta pwa/).
+name: Publicar app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  compilar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Instalar dependencias
+        run: npm install --no-audit --no-fund --ignore-scripts
+
+      - name: Compilar
+        run: npx vite build --base=./
+
+      - name: Hacerla instalable como app
+        run: node pwa/preparar-app.mjs dist
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  publicar:
+    needs: compilar
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - id: despliegue
+        uses: actions/deploy-pages@v5
